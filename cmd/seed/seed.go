@@ -4,35 +4,47 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"os"
+
+	"github.com/joho/godotenv"
 
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/theblindoracle/aphrodite-backend/internal/config"
 	"github.com/theblindoracle/aphrodite-backend/internal/database"
 )
 
-const dbFile string = "app.db"
-
 func main() {
-	db, err := sql.Open("sqlite3", dbFile)
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
+	dbURL := os.Getenv("DB_PATH")
+	if dbURL == "" {
+		log.Printf("Could not env variable DB_URL")
+		return
+	}
+	db, err := sql.Open("sqlite3", dbURL)
 	if err != nil {
 		log.Fatalf("could not open database: %v", err)
 	}
 
 	dbQueries := database.New(db)
 
-	cfg := Config{
-		db: dbQueries,
+	cfg := config.Config{
+		Db: dbQueries,
 	}
 
-	_, err = cfg.db.CreateNote(context.Background(), "I Love you!")
+	_, err = cfg.Db.CreateNote(context.Background(), "I Love you!")
 	if err != nil {
 		log.Fatalf("could not create note: %v", err)
 	}
-	_, err = cfg.db.CreateNote(context.Background(), "You're the best")
+	_, err = cfg.Db.CreateNote(context.Background(), "You're the best")
 	if err != nil {
 		log.Fatalf("could not create note: %v", err)
 	}
 
-	notes, err := cfg.db.GetAllNotes(context.Background())
+	notes, err := cfg.Db.GetAllNotes(context.Background())
 
 	for idx, note := range notes {
 
