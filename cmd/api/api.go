@@ -1,13 +1,12 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"log"
+	"net/http"
 	"os"
 
 	"github.com/joho/godotenv"
-
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/theblindoracle/aphrodite-backend/internal/database"
 	"github.com/theblindoracle/aphrodite-backend/internal/server"
@@ -24,6 +23,12 @@ func main() {
 		log.Printf("Could not env variable DB_URL")
 		return
 	}
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Printf("Could not env variable PORT")
+		return
+	}
+
 	db, err := sql.Open("sqlite3", dbURL)
 	if err != nil {
 		log.Fatalf("could not open database: %v", err)
@@ -35,23 +40,14 @@ func main() {
 		Db: dbQueries,
 	}
 
-	_, err = cfg.Db.CreateNote(context.Background(), "I Love you!")
-	if err != nil {
-		log.Fatalf("could not create note: %v", err)
-	}
-	_, err = cfg.Db.CreateNote(context.Background(), "You're the best")
-	if err != nil {
-		log.Fatalf("could not create note: %v", err)
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /notes", cfg.HandlerGetNotes)
+
+	srv := &http.Server{
+		Addr:    ":" + port,
+		Handler: mux,
 	}
 
-	notes, err := cfg.Db.GetAllNotes(context.Background())
-
-	for idx, note := range notes {
-
-		log.Printf("Note %v", idx)
-		log.Printf("*ID			%v", note.ID)
-		log.Printf("*Created At %v", note.CreatedAt)
-		log.Printf("*Updated At %v", note.UpdatedAt)
-		log.Printf("*Note		%v", note.Note)
-	}
+	log.Printf("Serving on port: %s\n", port)
+	log.Fatal(srv.ListenAndServe())
 }
